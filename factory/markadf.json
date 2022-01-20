@@ -1,0 +1,9 @@
+{
+	"name": "markadf",
+	"location": "eastasia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "e15597b8-b100-4074-b14e-08ee0a11c871",
+		"tenantId": "07cc872f-b6e3-487f-834e-25eb4f34ddad"
+	}
+}
