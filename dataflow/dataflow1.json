@@ -1,0 +1,79 @@
+{
+	"name": "dataflow1",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "Orders",
+						"type": "DatasetReference"
+					},
+					"name": "Orders"
+				},
+				{
+					"dataset": {
+						"referenceName": "Orders_Weekly",
+						"type": "DatasetReference"
+					},
+					"name": "OrdersWeekly"
+				},
+				{
+					"dataset": {
+						"referenceName": "Region_Cost",
+						"type": "DatasetReference"
+					},
+					"name": "RegionCost"
+				},
+				{
+					"dataset": {
+						"referenceName": "Returns",
+						"type": "DatasetReference"
+					},
+					"name": "Returns"
+				},
+				{
+					"dataset": {
+						"referenceName": "Users",
+						"type": "DatasetReference"
+					},
+					"name": "Users"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "DSCosmosProfit",
+						"type": "DatasetReference"
+					},
+					"name": "Profit"
+				},
+				{
+					"dataset": {
+						"referenceName": "DSCosmosLoss",
+						"type": "DatasetReference"
+					},
+					"name": "Loss"
+				}
+			],
+			"transformations": [
+				{
+					"name": "Union1"
+				},
+				{
+					"name": "Join1"
+				},
+				{
+					"name": "Join2"
+				},
+				{
+					"name": "Sort1"
+				},
+				{
+					"name": "ConditionalSplit1"
+				}
+			],
+			"script": "source(output(\n\t\t{Row ID} as string,\n\t\t{Order Priority} as string,\n\t\tDiscount as string,\n\t\t{Unit Price} as string,\n\t\t{Shipping Cost} as string,\n\t\t{Customer ID} as string,\n\t\t{Customer Name} as string,\n\t\t{Ship Mode} as string,\n\t\t{Customer Segment} as string,\n\t\t{Product Category} as string,\n\t\t{Product Sub-Category} as string,\n\t\t{Product Container} as string,\n\t\t{Product Name} as string,\n\t\t{Product Base Margin} as string,\n\t\tCountry as string,\n\t\tRegion as string,\n\t\t{State or Province} as string,\n\t\tCity as string,\n\t\t{Postal Code} as string,\n\t\t{Order Date} as string,\n\t\t{Ship Date} as string,\n\t\tProfit as double,\n\t\t{Quantity ordered new} as string,\n\t\tSales as string,\n\t\t{Order ID} as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\tpartitionBy('hash', 1)) ~> Orders\nsource(output(\n\t\t{Row ID} as string,\n\t\t{Order Priority} as string,\n\t\tDiscount as string,\n\t\t{Unit Price} as string,\n\t\t{Shipping Cost} as string,\n\t\t{Customer ID} as string,\n\t\t{Customer Name} as string,\n\t\t{Ship Mode} as string,\n\t\t{Customer Segment} as string,\n\t\t{Product Category} as string,\n\t\t{Product Sub-Category} as string,\n\t\t{Product Container} as string,\n\t\t{Product Name} as string,\n\t\t{Product Base Margin} as string,\n\t\tCountry as string,\n\t\tRegion as string,\n\t\t{State or Province} as string,\n\t\tCity as string,\n\t\t{Postal Code} as string,\n\t\t{Order Date} as string,\n\t\t{Ship Date} as string,\n\t\tProfit as double,\n\t\t{Quantity ordered new} as string,\n\t\tSales as string,\n\t\t{Order ID} as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false) ~> OrdersWeekly\nsource(output(\n\t\tRegion as string,\n\t\tCost as double\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\tpartitionBy('hash', 1)) ~> RegionCost\nsource(output(\n\t\t{Order ID} as string,\n\t\tStatus as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\tpartitionBy('hash', 1)) ~> Returns\nsource(output(\n\t\tRegion as string,\n\t\tManager as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\tpartitionBy('hash', 1)) ~> Users\nOrders, OrdersWeekly union(byName: true,\n\tpartitionBy('hash', 1))~> Union1\nUnion1, RegionCost join(Union1@Region == RegionCost@Region,\n\tjoinType:'inner',\n\tpartitionBy('hash', 1),\n\tbroadcast: 'auto')~> Join1\nJoin1, Returns join(Union1@{Order ID} == Returns@{Order ID},\n\tjoinType:'inner',\n\tpartitionBy('hash', 1),\n\tbroadcast: 'auto')~> Join2\nJoin2 sort(asc({Row ID}, true),\n\tcaseInsensitive: true,\n\tpartitionBy('hash', 1)) ~> Sort1\nSort1 split(Profit > 0,\n\tdisjoint: true,\n\tpartitionBy('hash', 1)) ~> ConditionalSplit1@(Profit, Loss)\nConditionalSplit1@Profit sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'document',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\tpartitionBy('hash', 1)) ~> Profit\nConditionalSplit1@Loss sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'document',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\tpartitionBy('hash', 1)) ~> Loss"
+		}
+	}
+}
